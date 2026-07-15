@@ -1,0 +1,89 @@
+blueprint:
+  name: Schlafenszeit per RFID-Tag
+  source_url: https://github.com/Tschaegged/schlafenszeit-blueprint/blob/main/blueprints/automation/schlafenszeit_rfid.yaml
+  description: |
+    # 🛏️ Schlafenszeit per RFID-Tag
+
+    Scannt man beim Zubettgehen einen RFID/NFC-Tag, werden automatisch:
+    - ausgewählte **Lichter ausgeschaltet**
+    - ausgewählte **Heizzonen in den Eco-Modus gezwungen**
+    - ausgewählte **Rollläden vollständig geschlossen**
+
+    Leere Auswahlen werden einfach übersprungen, es entsteht kein Fehler.
+
+    ### 🌱 Voraussetzung für den Eco-Modus
+
+    Dieses Blueprint schaltet **keine Climate-Entitäten direkt**. Die Heizzonen-Automationen
+    (`panhans/advanced_heating_control.yaml`, z. B. `Heizung_Schlafzimmer_v5`) kennen keinen
+    `climate.set_preset_mode`, sondern erzwingen Eco über einen eigenen `input_boolean`-Helfer
+    im Input `input_force_eco_temperature`. Lege pro gewünschter Heizzone einen solchen Helfer
+    an, hinterlege ihn in der jeweiligen Heizungs-Automation und wähle hier genau diese Helfer
+    aus. Das Blueprint schaltet sie per `input_boolean.turn_on` ein; die Priorität von Force-Eco
+    ist hoch (nur der Party-Modus steht darüber).
+  domain: automation
+  author: Claude
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    tag_id:
+      name: "🏷️ RFID/NFC-Tag"
+      description: >-
+        Die Tag-ID, deren Scan die Schlafenszeit-Routine auslöst. Zu finden unter
+        Einstellungen → Automationen & Szenen → Tags, oder beim Anlegen eines
+        Tag-Triggers in der Automations-UI.
+      selector:
+        text: {}
+    lights:
+      name: "💡 Lichter"
+      description: "`optional`\n\nDiese Lichter werden beim Scan ausgeschaltet."
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - light
+    climate_eco_helpers:
+      name: "🌱 Heizungen (Eco erzwingen)"
+      description: >-
+        `optional`
+
+        Force-Eco-`input_boolean`-Helfer der gewünschten Heizzonen-Automationen (siehe
+        Beschreibung oben) – nicht die Climate-Entitäten selbst.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - input_boolean
+    covers:
+      name: "🪟 Rollläden"
+      description: "`optional`\n\nDiese Rollläden/Jalousien werden vollständig geschlossen."
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - cover
+
+triggers:
+  - trigger: tag
+    tag_id: !input tag_id
+
+conditions: []
+
+actions:
+  - action: light.turn_off
+    target:
+      entity_id: !input lights
+  - action: input_boolean.turn_on
+    target:
+      entity_id: !input climate_eco_helpers
+  - action: cover.close_cover
+    target:
+      entity_id: !input covers
+
+mode: single
