@@ -6,11 +6,27 @@ Lichter ausschaltet, Heizzonen in den Eco-Modus zwingt und Rollläden schließt.
 ## Features
 
 - **Frei wählbarer Tag** – jede beliebige registrierte Tag-ID als Auslöser
-- **Frei wählbare Lichter** – werden ausgeschaltet
+- **Frei wählbare Lichter, Gruppen und Schalter** – werden ausgeschaltet
 - **Frei wählbare Rollläden/Jalousien** – werden vollständig geschlossen
 - **Frei wählbare Heizzonen** – Eco-Modus wird erzwungen
 - Leere Auswahlen werden übersprungen, es entsteht kein Fehler
 - `mode: single`, keine unnötige Logik – ein Scan, drei einfache Service-Calls
+
+## 💡 Gemischte Auswahl beim Ausschalten
+
+Beim Ausschalten sind neben einzelnen Lichtern auch **Gruppen** (`group.…`) und
+**Schalter** (`switch.…`) erlaubt – praktisch für Lampen, die an einer Steckdose
+hängen, oder für eine einzige Sammelgruppe „alle Lampen".
+
+Ausgeschaltet wird über `homeassistant.turn_off`. Das ist bei gemischten Gruppen
+entscheidend: `light.turn_off` nimmt eine `group.…` zwar entgegen, filtert danach
+aber auf die `light`-Mitglieder – Steckdosen und Schalter in derselben Gruppe
+blieben unbemerkt an.
+
+> **Hinweis zu gemischten Gruppen:** Ein über die Oberfläche angelegter
+> Gruppen-Helfer deckt immer nur *eine* Domain ab. Für eine Gruppe aus Lampen
+> *und* lampensteuernden Steckdosen braucht es eine klassische YAML-`group:`
+> in der `configuration.yaml`.
 
 ## 🌱 Wichtig: Wie der Eco-Modus funktioniert
 
@@ -58,7 +74,7 @@ https://raw.githubusercontent.com/Tschaegged/schlafenszeit-blueprint/main/bluepr
 | Option | Zweck | Pflicht |
 |---|---|---|
 | RFID/NFC-Tag | Tag-ID, deren Scan die Routine auslöst | ✅ |
-| Lichter | Werden beim Scan ausgeschaltet | – |
+| Lichter, Gruppen & Schalter | Werden beim Scan ausgeschaltet (`light`, `group`, `switch`) | – |
 | Heizungen (Eco erzwingen) | Force-Eco-`input_boolean`-Helfer der gewünschten Heizzonen | – |
 | Rollläden | Werden vollständig geschlossen | – |
 
