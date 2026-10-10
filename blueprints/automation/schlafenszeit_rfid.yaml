@@ -27,6 +27,15 @@ blueprint:
     an, hinterlege ihn in der jeweiligen Heizungs-Automation und wähle hier genau diese Helfer
     aus. Das Blueprint schaltet sie per `input_boolean.turn_on` ein; die Priorität von Force-Eco
     ist hoch (nur der Party-Modus steht darüber).
+
+    ### ⏰ Automatische Eco-Freigabe am Morgen
+
+    Zur eingestellten Uhrzeit schaltet das Blueprint **alle** oben gewählten Eco-Helfer wieder
+    aus – egal wie viele Heizzonen eingetragen sind. Danach gelten wieder die normalen
+    Heizpläne. Ohne diese Freigabe bliebe Force-Eco dauerhaft aktiv und kein Raum käme mehr
+    auf Komforttemperatur. Wähle eine Zeit kurz vor dem frühesten Heizbeginn aller Zonen.
+    Lief Home Assistant zur Freigabezeit nicht (Neustart, Update), wird die Freigabe beim
+    nächsten Start nachgeholt, sofern der letzte Tag-Scan vor der verpassten Freigabe lag.
   domain: automation
   author: Claude
   homeassistant:
@@ -80,6 +89,14 @@ blueprint:
           filter:
           - domain:
             - input_boolean
+    eco_release_time:
+      name: "⏰ Eco freigeben um"
+      description: >-
+        Zu dieser Uhrzeit werden alle gewählten Eco-Helfer wieder ausgeschaltet, damit
+        die Heizpläne wieder gelten. Am besten kurz vor dem frühesten Heizbeginn.
+      default: "04:30:00"
+      selector:
+        time: {}
     covers:
       name: "🪟 Rollläden"
       description: "`optional`\n\nDiese Rollläden/Jalousien werden vollständig geschlossen."
@@ -91,25 +108,78 @@ blueprint:
           - domain:
             - cover
 
+variables:
+  tag_id_value: !input tag_id
+  eco_helpers: !input climate_eco_helpers
+  release_time: !input eco_release_time
+
 triggers:
   - trigger: tag
     tag_id: !input tag_id
+    id: tag_scan
+  - trigger: time
+    at: !input eco_release_time
+    id: eco_freigabe
+  - trigger: homeassistant
+    event: start
+    id: neustart
 
 conditions: []
 
 actions:
-  # homeassistant.turn_off statt light.turn_off: expandiert Gruppen ueber alle
-  # Domains hinweg. light.turn_off wuerde eine gemischte group.* zwar annehmen,
-  # danach aber auf die light-Mitglieder filtern - Steckdosen/Schalter in der
-  # Gruppe blieben unbemerkt an.
-  - action: homeassistant.turn_off
-    target:
-      entity_id: !input lights
-  - action: input_boolean.turn_on
-    target:
-      entity_id: !input climate_eco_helpers
-  - action: cover.close_cover
-    target:
-      entity_id: !input covers
+  - choose:
+      # ── Tag gescannt: Schlafenszeit ──────────────────────────────────────
+      - conditions:
+          - condition: trigger
+            id: tag_scan
+        sequence:
+          # homeassistant.turn_off statt light.turn_off: expandiert Gruppen ueber alle
+          # Domains hinweg. light.turn_off wuerde eine gemischte group.* zwar annehmen,
+          # danach aber auf die light-Mitglieder filtern - Steckdosen/Schalter in der
+          # Gruppe blieben unbemerkt an.
+          - action: homeassistant.turn_off
+            target:
+              entity_id: !input lights
+          - action: input_boolean.turn_on
+            target:
+              entity_id: !input climate_eco_helpers
+          - action: cover.close_cover
+            target:
+              entity_id: !input covers
+
+      # ── Morgens: Eco fuer alle gewaehlten Heizzonen wieder freigeben ─────
+      - conditions:
+          - condition: trigger
+            id: eco_freigabe
+          - condition: template
+            value_template: "{{ eco_helpers | count > 0 }}"
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input climate_eco_helpers
+
+      # ── Nach Neustart: verpasste Freigabe nachholen ──────────────────────
+      # Freigeben, wenn noch ein Eco-Helfer an ist und der letzte Tag-Scan vor
+      # dem letzten Freigabezeitpunkt lag. Der Scan-Zeitpunkt kommt aus der
+      # Tag-Entitaet (deren Zustand = letzter Scan); last_changed der Helfer
+      # taugt dafuer nicht, weil ein Neustart ihn auf die Startzeit setzt.
+      - conditions:
+          - condition: trigger
+            id: neustart
+          - condition: template
+            value_template: >-
+              {% set freigabe = today_at(release_time) %}
+              {% set letzte_freigabe = freigabe if now() >= freigabe
+                 else freigabe - timedelta(days=1) %}
+              {% set tag_entity = states.tag
+                 | selectattr('attributes.tag_id', 'eq', tag_id_value)
+                 | map(attribute='entity_id') | first | default(none) %}
+              {% set letzter_scan = as_datetime(states(tag_entity), none) if tag_entity else none %}
+              {{ eco_helpers | select('is_state', 'on') | list | count > 0
+                 and (letzter_scan is none or letzter_scan < letzte_freigabe) }}
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: !input climate_eco_helpers
 
 mode: single

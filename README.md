@@ -9,6 +9,8 @@ Lichter ausschaltet, Heizzonen in den Eco-Modus zwingt und Rollläden schließt.
 - **Frei wählbare Lichter, Gruppen und Schalter** – werden ausgeschaltet
 - **Frei wählbare Rollläden/Jalousien** – werden vollständig geschlossen
 - **Frei wählbare Heizzonen** – Eco-Modus wird erzwungen
+- **Automatische Eco-Freigabe am Morgen** – zur eingestellten Uhrzeit werden alle gewählten
+  Eco-Helfer wieder ausgeschaltet; eine wegen Neustart verpasste Freigabe wird nachgeholt
 - Leere Auswahlen werden übersprungen, es entsteht kein Fehler
 - `mode: single`, keine unnötige Logik – ein Scan, drei einfache Service-Calls
 
@@ -43,6 +45,19 @@ hinterlege ihn in der zugehörigen Heizungs-Automation als `input_force_eco_temp
 Falls deine Heizungslösung `climate.set_preset_mode` unterstützt, kannst du das Blueprint
 leicht anpassen und stattdessen direkt die Climate-Entitäten ansteuern.
 
+## ⏰ Automatische Eco-Freigabe am Morgen
+
+Force-Eco hat in der Heizungs-Automation Vorrang vor dem Zeitplan. Würde der Helfer nie
+wieder ausgeschaltet, käme kein Raum mehr auf Komforttemperatur. Deshalb schaltet das
+Blueprint zur Uhrzeit **„Eco freigeben um“** (Standard 04:30) **alle** gewählten Eco-Helfer
+wieder aus – unabhängig davon, wie viele Heizzonen eingetragen sind. Wähle die Zeit kurz
+vor dem frühesten Heizbeginn aller Zonen.
+
+Lief Home Assistant zur Freigabezeit nicht (Neustart, Update), wird die Freigabe beim
+nächsten Start nachgeholt – sofern der letzte Scan des Tags vor der verpassten Freigabe
+lag. Der Scan-Zeitpunkt kommt aus der Tag-Entität, denn `last_changed` der Helfer wird
+bei einem Neustart auf die Startzeit gesetzt und taugt dafür nicht.
+
 ## Installation
 
 ### Über HACS (empfohlen)
@@ -76,6 +91,7 @@ https://raw.githubusercontent.com/Tschaegged/schlafenszeit-blueprint/main/bluepr
 | RFID/NFC-Tag | Tag-ID, deren Scan die Routine auslöst | ✅ |
 | Lichter, Gruppen & Schalter | Werden beim Scan ausgeschaltet (`light`, `group`, `switch`) | – |
 | Heizungen (Eco erzwingen) | Force-Eco-`input_boolean`-Helfer der gewünschten Heizzonen | – |
+| Eco freigeben um | Uhrzeit, zu der alle gewählten Eco-Helfer wieder ausgeschaltet werden (Standard 04:30) | – |
 | Rollläden | Werden vollständig geschlossen | – |
 
 ## Lizenz
