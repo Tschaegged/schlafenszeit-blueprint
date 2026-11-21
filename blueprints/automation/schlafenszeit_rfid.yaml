@@ -8,6 +8,7 @@ blueprint:
     - ausgewählte **Lichter, Gruppen und Schalter ausgeschaltet**
     - ausgewählte **Heizzonen in den Eco-Modus gezwungen**
     - ausgewählte **Rollläden vollständig geschlossen**
+    - ausgewählte **Musik-Player pausiert** (nur die, die gerade spielen)
 
     Leere Auswahlen werden einfach übersprungen, es entsteht kein Fehler.
 
@@ -107,11 +108,28 @@ blueprint:
           filter:
           - domain:
             - cover
+    media_players:
+      name: "🎵 Musik stoppen"
+      description: >-
+        `optional`
+
+
+        Diese Media-Player werden pausiert, sofern sie gerade spielen. Player, die
+        schon pausiert oder aus sind, werden übersprungen. Bei gruppierten Sonos-
+        Lautsprechern pausiert damit die ganze Gruppe.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - media_player
 
 variables:
   tag_id_value: !input tag_id
   eco_helpers: !input climate_eco_helpers
   release_time: !input eco_release_time
+  media_player_list: !input media_players
 
 triggers:
   - trigger: tag
@@ -146,6 +164,19 @@ actions:
           - action: cover.close_cover
             target:
               entity_id: !input covers
+          # Nur spielende Player pausieren: media_pause auf einem Player, der aus
+          # oder schon pausiert ist, kann je nach Integration einen Fehler werfen.
+          - variables:
+              spielende_player: >-
+                {{ media_player_list | select('is_state', 'playing') | list }}
+          - if:
+              - condition: template
+                value_template: "{{ spielende_player | count > 0 }}"
+            then:
+              - action: media_player.media_pause
+                target:
+                  entity_id: "{{ spielende_player }}"
+                continue_on_error: true
 
       # ── Morgens: Eco fuer alle gewaehlten Heizzonen wieder freigeben ─────
       - conditions:

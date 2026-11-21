@@ -1,13 +1,15 @@
 # 🛏️ Schlafenszeit per RFID-Tag – Home Assistant Blueprint
 
 Ein Blueprint, das beim Scannen eines RFID/NFC-Tags (z. B. am Bett) automatisch
-Lichter ausschaltet, Heizzonen in den Eco-Modus zwingt und Rollläden schließt.
+Lichter ausschaltet, Heizzonen in den Eco-Modus zwingt, Rollläden schließt und
+Musik pausiert.
 
 ## Features
 
 - **Frei wählbarer Tag** – jede beliebige registrierte Tag-ID als Auslöser
 - **Frei wählbare Lichter, Gruppen und Schalter** – werden ausgeschaltet
 - **Frei wählbare Rollläden/Jalousien** – werden vollständig geschlossen
+- **Frei wählbare Musik-Player** – werden pausiert, sofern sie gerade spielen (optional)
 - **Frei wählbare Heizzonen** – Eco-Modus wird erzwungen
 - **Automatische Eco-Freigabe am Morgen** – zur eingestellten Uhrzeit werden alle gewählten
   Eco-Helfer wieder ausgeschaltet; eine wegen Neustart verpasste Freigabe wird nachgeholt
