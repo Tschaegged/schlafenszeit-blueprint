@@ -7,6 +7,7 @@ Musik pausiert.
 ## Features
 
 - **Frei wählbarer Tag** – jede beliebige registrierte Tag-ID als Auslöser
+- **Optionaler Taster** – ein `input_button`-Helfer (z. B. als Button-Karte im Dashboard) löst die Routine genauso aus wie der Scan
 - **Frei wählbare Lichter, Gruppen und Schalter** – werden ausgeschaltet
 - **Frei wählbare Rollläden/Jalousien** – werden vollständig geschlossen
 - **Frei wählbare Musik-Player** – werden pausiert, sofern sie gerade spielen (optional)
@@ -91,6 +92,7 @@ https://raw.githubusercontent.com/Tschaegged/schlafenszeit-blueprint/main/bluepr
 | Option | Zweck | Pflicht |
 |---|---|---|
 | RFID/NFC-Tag | Tag-ID, deren Scan die Routine auslöst | ✅ |
+| Taster | `input_button`-Helfer, dessen Druck die Routine ebenfalls auslöst (z. B. Dashboard-Button) | – |
 | Lichter, Gruppen & Schalter | Werden beim Scan ausgeschaltet (`light`, `group`, `switch`) | – |
 | Heizungen (Eco erzwingen) | Force-Eco-`input_boolean`-Helfer der gewünschten Heizzonen | – |
 | Eco freigeben um | Uhrzeit, zu der alle gewählten Eco-Helfer wieder ausgeschaltet werden (Standard 04:30) | – |

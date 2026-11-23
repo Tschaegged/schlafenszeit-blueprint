@@ -12,6 +12,12 @@ blueprint:
 
     Leere Auswahlen werden einfach übersprungen, es entsteht kein Fehler.
 
+    ### 🔘 Optional: Button im Dashboard
+
+    Statt den Tag zu scannen, kann die Routine auch per **Taster-Helfer** (`input_button`)
+    ausgelöst werden – z. B. über eine Button-Karte im Dashboard. Ein Druck wirkt genau wie
+    ein Scan (inklusive Eco-Freigabe am Morgen).
+
     ### 💡 Gemischte Auswahl
 
     Beim Ausschalten sind neben Lichtern auch **Gruppen** (`group.…`) und **Schalter**
@@ -51,6 +57,22 @@ blueprint:
         Tag-Triggers in der Automations-UI.
       selector:
         text: {}
+    button_entity:
+      name: "🔘 Taster (optional)"
+      description: >-
+        `optional`
+
+
+        Ein `input_button`-Helfer, dessen Druck die Routine genauso auslöst wie der
+        Tag-Scan – z. B. für eine Button-Karte im Dashboard. Leer lassen, wenn nur
+        der Tag genutzt werden soll.
+      default: []
+      selector:
+        entity:
+          multiple: false
+          filter:
+          - domain:
+            - input_button
     lights:
       name: "💡 Lichter, Gruppen & Schalter"
       description: >-
@@ -130,11 +152,21 @@ variables:
   eco_helpers: !input climate_eco_helpers
   release_time: !input eco_release_time
   media_player_list: !input media_players
+  button_value: !input button_entity
 
 triggers:
   - trigger: tag
     tag_id: !input tag_id
     id: tag_scan
+  - trigger: state
+    entity_id: !input button_entity
+    not_from:
+      - unknown
+      - unavailable
+    not_to:
+      - unknown
+      - unavailable
+    id: button_press
   - trigger: time
     at: !input eco_release_time
     id: eco_freigabe
@@ -146,10 +178,12 @@ conditions: []
 
 actions:
   - choose:
-      # ── Tag gescannt: Schlafenszeit ──────────────────────────────────────
+      # ── Tag gescannt oder Taster gedrueckt: Schlafenszeit ────────────────
       - conditions:
           - condition: trigger
-            id: tag_scan
+            id:
+              - tag_scan
+              - button_press
         sequence:
           # homeassistant.turn_off statt light.turn_off: expandiert Gruppen ueber alle
           # Domains hinweg. light.turn_off wuerde eine gemischte group.* zwar annehmen,
@@ -190,9 +224,9 @@ actions:
               entity_id: !input climate_eco_helpers
 
       # ── Nach Neustart: verpasste Freigabe nachholen ──────────────────────
-      # Freigeben, wenn noch ein Eco-Helfer an ist und der letzte Tag-Scan vor
-      # dem letzten Freigabezeitpunkt lag. Der Scan-Zeitpunkt kommt aus der
-      # Tag-Entitaet (deren Zustand = letzter Scan); last_changed der Helfer
+      # Freigeben, wenn noch ein Eco-Helfer an ist und der letzte Tag-Scan bzw.
+      # Tasterdruck vor dem letzten Freigabezeitpunkt lag. Der Zeitpunkt kommt aus
+      # der Tag- bzw. Taster-Entitaet (Zustand = letzter Ausloeser); last_changed der Helfer
       # taugt dafuer nicht, weil ein Neustart ihn auf die Startzeit setzt.
       - conditions:
           - condition: trigger
@@ -205,7 +239,10 @@ actions:
               {% set tag_entity = states.tag
                  | selectattr('attributes.tag_id', 'eq', tag_id_value)
                  | map(attribute='entity_id') | first | default(none) %}
-              {% set letzter_scan = as_datetime(states(tag_entity), none) if tag_entity else none %}
+              {% set tag_scan = as_datetime(states(tag_entity), none) if tag_entity else none %}
+              {% set button_scan = as_datetime(states(button_value), none) if button_value else none %}
+              {% set ausloeser = [tag_scan, button_scan] | reject('none') | list %}
+              {% set letzter_scan = ausloeser | max if ausloeser else none %}
               {{ eco_helpers | select('is_state', 'on') | list | count > 0
                  and (letzter_scan is none or letzter_scan < letzte_freigabe) }}
         sequence:
